@@ -358,14 +358,34 @@ export default function BookScreen() {
             <View style={styles.slots}>
               {slots.map((slot) => {
                 const selected = time && normalizeTime(time) === slot;
+                const booked = dayRows.some(
+                  (row) =>
+                    row.id !== appointmentId &&
+                    isBlockingStatus(row.status) &&
+                    rangesOverlap(
+                      slot,
+                      settings?.slot_minutes ?? 30,
+                      row.start_time,
+                      row.duration_minutes,
+                    ),
+                );
                 return (
                   <Pressable
                     key={slot}
                     accessibilityRole="button"
+                    accessibilityState={{ selected: Boolean(selected), busy: booked }}
                     testID={`slot-${slot.slice(0, 5)}`}
                     onPress={() => setTime(slot)}
-                    style={[styles.slot, selected && styles.slotOn]}>
-                    <AppText style={{ color: selected ? theme.ink : theme.text, fontFamily: theme.font.medium }}>
+                    style={[
+                      styles.slot,
+                      booked && !selected ? styles.slotBooked : null,
+                      selected && styles.slotOn,
+                    ]}>
+                    <AppText
+                      style={{
+                        color: selected ? theme.ink : booked ? theme.rose : theme.text,
+                        fontFamily: theme.font.medium,
+                      }}>
                       {formatTimeLabel(slot)}
                     </AppText>
                   </Pressable>
@@ -489,6 +509,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
+  },
+  slotBooked: {
+    borderColor: 'rgba(244, 63, 94, 0.45)',
+    backgroundColor: theme.roseSoft,
   },
   slotOn: {
     backgroundColor: theme.gold,

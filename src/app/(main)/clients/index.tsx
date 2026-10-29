@@ -2,7 +2,7 @@ import { router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { GlassCard } from '@/components/GlassCard';
-import { AppText, Notice, PageHeader, Screen, TextField } from '@/components/ui';
+import { AppText, GoldButton, Notice, PageHeader, Screen, TextField } from '@/components/ui';
 import { fetchClientDirectory } from '@/lib/api';
 import { useSalonLive } from '@/lib/live';
 import { clientLabel, formatInr, formatPhone } from '@/lib/format';
@@ -52,13 +52,22 @@ export default function ClientsScreen() {
 
   return (
     <Screen>
-      <PageHeader kicker="Book" title="Clients" subtitle="Search by name or mobile. A number with no name still shows the number." />
+      <PageHeader
+        kicker="Book"
+        title="Clients"
+        subtitle="Search by name or mobile. A number with no name still shows the number."
+      />
+      <View style={styles.actions}>
+        <GoldButton label="New client" onPress={() => router.push('/clients/new' as Href)} />
+      </View>
       <TextField label="Search" value={query} onChangeText={setQuery} placeholder="Name or mobile" />
       {error ? <Notice>{error}</Notice> : null}
       {loading ? <ActivityIndicator color={theme.gold} /> : null}
       {!loading && clients.length === 0 ? (
         <AppText style={styles.quiet}>
-          {debounced ? 'No clients match that search.' : 'No clients yet. A booking with a mobile number starts the book.'}
+          {debounced
+            ? 'No clients match that search.'
+            : 'No clients yet. Tap New client to save a mobile number, or create one while booking.'}
         </AppText>
       ) : (
         <View style={{ gap: 10 }}>
@@ -80,6 +89,9 @@ export default function ClientsScreen() {
 }
 
 const styles = StyleSheet.create({
+  actions: {
+    marginBottom: 16,
+  },
   quiet: {
     color: theme.muted,
   },
