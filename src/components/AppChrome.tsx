@@ -78,7 +78,8 @@ export function AppChrome() {
             <TabButton key={item.href} label={item.short} active={item.match(path)} onPress={() => openNav(item.href)} />
           ))}
           <Pressable accessibilityRole="button" accessibilityLabel="Book" onPress={openBook} style={styles.book}>
-            <AppText style={styles.bookText}>+</AppText>
+            <View style={styles.plusH} />
+            <View style={styles.plusV} />
           </Pressable>
           {rightNav.map((item) => (
             <TabButton key={item.href} label={item.short} active={item.match(path)} onPress={() => openNav(item.href)} />
@@ -183,11 +184,18 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: '#121722',
   },
-  bookText: {
-    color: theme.ink,
-    fontFamily: theme.font.semibold,
-    fontSize: 28,
-    lineHeight: 30,
-    marginTop: -2,
+  plusH: {
+    position: 'absolute',
+    width: 18,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: theme.ink,
+  },
+  plusV: {
+    position: 'absolute',
+    width: 3,
+    height: 18,
+    borderRadius: 2,
+    backgroundColor: theme.ink,
   },
 });

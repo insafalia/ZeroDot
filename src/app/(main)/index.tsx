@@ -2,12 +2,22 @@ import { router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { GlassCard } from '@/components/GlassCard';
+import { OverdueDots } from '@/components/OverdueDots';
 import { StatusChips } from '@/components/StatusChips';
 import { MonthSwitcher } from '@/components/MonthSwitcher';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { AppText, GhostButton, GoldButton, Notice, PageHeader, Screen } from '@/components/ui';
 import { fetchDashboard, fetchMonthVisits, summarizeVisits, updateAppointmentStatus } from '@/lib/api';
 import { useSalonLive } from '@/lib/live';
-import { clientLabel, formatInr, formatLongDate, formatTimeLabel, greeting, istTodayIso } from '@/lib/format';
+import {
+  clientLabel,
+  formatInr,
+  formatLongDate,
+  formatTimeLabel,
+  greeting,
+  isOverdueAppointment,
+  istTodayIso,
+} from '@/lib/format';
 import { theme, type AppointmentStatus } from '@/theme';
 import type { Appointment, DashboardData } from '@/types';
 
@@ -154,34 +164,49 @@ export default function DashboardScreen() {
             </GlassCard>
           ) : (
             <View style={{ gap: 12 }}>
-              {data.agenda.map((item) => (
-                <GlassCard key={item.id} style={item.status === 'cancelled' ? { opacity: 0.62 } : undefined}>
-                  <Pressable
-                    onPress={() => router.push({ pathname: '/book', params: { id: item.id } } as unknown as Href)}
-                    style={styles.agendaTop}>
-                    <View style={{ flex: 1 }}>
-                      <AppText style={styles.time}>{formatTimeLabel(item.start_time)}</AppText>
-                      <AppText style={styles.client}>{clientLabel(item.client)}</AppText>
-                      <AppText style={styles.meta}>
-                        {item.service_name} · {item.duration_minutes} min
-                      </AppText>
-                      {item.formula_notes ? (
-                        <AppText numberOfLines={2} style={styles.notes}>
-                          {item.formula_notes}
+              {data.agenda.map((item) => {
+                const overdue = isOverdueAppointment(item);
+                return (
+                  <GlassCard
+                    key={item.id}
+                    style={[
+                      item.status === 'cancelled' ? { opacity: 0.62 } : undefined,
+                      overdue ? styles.overdueCard : undefined,
+                    ]}>
+                    <View style={styles.agendaTop}>
+                      <Pressable
+                        onPress={() => router.push({ pathname: '/book', params: { id: item.id } } as unknown as Href)}
+                        style={{ flex: 1 }}>
+                        <AppText style={styles.time}>{formatTimeLabel(item.start_time)}</AppText>
+                        <AppText style={styles.client}>{clientLabel(item.client)}</AppText>
+                        <AppText style={styles.meta}>
+                          {item.service_name} · {item.duration_minutes} min
                         </AppText>
-                      ) : null}
+                        {item.formula_notes ? (
+                          <AppText numberOfLines={2} style={styles.notes}>
+                            {item.formula_notes}
+                          </AppText>
+                        ) : null}
+                      </Pressable>
+                      <View style={styles.agendaAside}>
+                        <AppText style={styles.price}>{formatInr(item.price_inr)}</AppText>
+                        <View style={styles.agendaActions}>
+                          <WhatsAppButton appointment={item} compact />
+                          {overdue ? <OverdueDots /> : null}
+                        </View>
+                      </View>
                     </View>
-                    <AppText style={styles.price}>{formatInr(item.price_inr)}</AppText>
-                  </Pressable>
-                  <View style={{ marginTop: 14 }}>
-                    <StatusChips
-                      value={item.status}
-                      disabled={pendingId === item.id}
-                      onChange={(status) => changeStatus(item.id, status)}
-                    />
-                  </View>
-                </GlassCard>
-              ))}
+                    {overdue ? <AppText style={styles.overdueHint}>Running out of time</AppText> : null}
+                    <View style={{ marginTop: overdue ? 10 : 14 }}>
+                      <StatusChips
+                        value={item.status}
+                        disabled={pendingId === item.id}
+                        onChange={(status) => changeStatus(item.id, status)}
+                      />
+                    </View>
+                  </GlassCard>
+                );
+              })}
             </View>
           )}
         </>
@@ -337,6 +362,25 @@ const styles = StyleSheet.create({
   agendaTop: {
     flexDirection: 'row',
     gap: 12,
+  },
+  agendaAside: {
+    flexShrink: 0,
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  agendaActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  overdueCard: {
+    borderColor: 'rgba(244, 63, 94, 0.45)',
+  },
+  overdueHint: {
+    color: theme.rose,
+    fontFamily: theme.font.medium,
+    fontSize: 12,
+    marginTop: 10,
   },
   time: {
     color: theme.gold,

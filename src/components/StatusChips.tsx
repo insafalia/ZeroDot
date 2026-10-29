@@ -6,14 +6,19 @@ export function StatusChips({
   value,
   onChange,
   disabled,
+  allowed,
 }: {
   value: AppointmentStatus;
   onChange: (status: AppointmentStatus) => void;
   disabled?: boolean;
+  /** When set, only these statuses are shown (e.g. past-slot booking). */
+  allowed?: AppointmentStatus[];
 }) {
+  const options = allowed?.length ? statusOrder.filter((status) => allowed.includes(status)) : statusOrder;
+
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-      {statusOrder.map((status) => {
+      {options.map((status) => {
         const meta = statusMeta[status];
         const selected = status === value;
         return (

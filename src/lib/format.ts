@@ -198,6 +198,41 @@ export function isBlockingStatus(status: AppointmentStatus): boolean {
   return status === 'confirmed' || status === 'in_progress' || status === 'completed';
 }
 
+export function isOpenStatus(status: AppointmentStatus): boolean {
+  return status === 'confirmed' || status === 'in_progress';
+}
+
+/** Statuses allowed when booking or editing a slot that already started. */
+export const pastSlotStatuses: AppointmentStatus[] = ['completed', 'no_show', 'cancelled'];
+
+export function istNowMinutes(now = new Date()): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: IST,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now);
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? 0);
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? 0);
+  return hour * 60 + minute;
+}
+
+export function isPastSlot(dateIso: string, startTime: string, now = new Date()): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso) || !startTime) return false;
+  const today = istTodayIso(now);
+  if (dateIso < today) return true;
+  if (dateIso > today) return false;
+  return minutesFromTime(normalizeTime(startTime)) < istNowMinutes(now);
+}
+
+export function isOverdueAppointment(item: {
+  appointment_date: string;
+  start_time: string;
+  status: AppointmentStatus;
+}): boolean {
+  return isOpenStatus(item.status) && isPastSlot(item.appointment_date, item.start_time);
+}
+
 export function parseMoney(value: string): number | null {
   const cleaned = value.replace(/[₹,\s]/g, '');
   if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;

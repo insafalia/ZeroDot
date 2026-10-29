@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { useAuth } from '@/auth';
 import { StatusChips } from '@/components/StatusChips';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { AppText, FieldRow, GhostButton, GoldButton, Notice, PageHeader, Screen, TextField } from '@/components/ui';
 import { fetchAppointment, fetchAppointmentsBetween, fetchServices, fetchSettings, saveBooking, searchClients } from '@/lib/api';
 import { useSalonLive } from '@/lib/live';
@@ -16,12 +17,14 @@ import {
   formatPhone,
   formatTimeLabel,
   isBlockingStatus,
+  isPastSlot,
   istTodayIso,
   minutesFromTime,
   normalizePhone,
   normalizeTime,
   parseDuration,
   parseMoney,
+  pastSlotStatuses,
   rangesOverlap,
 } from '@/lib/format';
 import { theme, type AppointmentStatus } from '@/theme';
@@ -153,6 +156,14 @@ export default function BookScreen() {
     settings && time && parsedDuration
       ? minutesFromTime(time) + parsedDuration > minutesFromTime(settings.close_time)
       : false;
+  const bookingInPast = Boolean(time && isPastSlot(date, time));
+  const statusOptions = bookingInPast ? pastSlotStatuses : undefined;
+
+  useEffect(() => {
+    if (!bookingInPast) return;
+    if (!pastSlotStatuses.includes(status)) setStatus('completed');
+  }, [bookingInPast, status]);
+
   const normalized = normalizePhone(phone);
   const exact = matches.find((match) => match.phone === normalized);
   const suggestions = matches
@@ -242,7 +253,20 @@ export default function BookScreen() {
               subtitle="Price starts from the menu and stays editable for this visit."
             />
           </View>
-          <GhostButton label="Close" onPress={close} />
+          <View style={styles.topActions}>
+            {appointmentId && normalized ? (
+              <WhatsAppButton
+                appointment={{
+                  appointment_date: date,
+                  start_time: time || '00:00:00',
+                  service_name: services.find((item) => item.id === serviceId)?.name ?? 'visit',
+                  status,
+                  client: { name: name || null, phone: normalized },
+                }}
+              />
+            ) : null}
+            <GhostButton label="Close" onPress={close} />
+          </View>
         </View>
         {!ready ? <ActivityIndicator color={theme.gold} /> : null}
         {error ? <Notice>{error}</Notice> : null}
@@ -356,6 +380,9 @@ export default function BookScreen() {
               </View>
             ) : null}
             {pastClose ? <Notice tone="gold">This visit runs past closing time.</Notice> : null}
+            {bookingInPast ? (
+              <Notice tone="gold">Past time — choose Completed, No-Show, or Cancelled.</Notice>
+            ) : null}
             <TextField
               label="Formula / color notes"
               value={notes}
@@ -364,7 +391,7 @@ export default function BookScreen() {
               placeholder="Formula, developer, or anything you need at the chair"
             />
             <AppText style={styles.label}>Status</AppText>
-            <StatusChips value={status} onChange={setStatus} />
+            <StatusChips value={status} onChange={setStatus} allowed={statusOptions} />
             <View style={{ height: 18 }} />
             <GoldButton testID="save-booking" label={saving ? 'Saving' : 'Save booking'} onPress={save} disabled={saving || !ready} />
           </>
@@ -380,6 +407,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: 12,
+  },
+  topActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   known: {
     color: theme.gold,

@@ -2,6 +2,8 @@ import { router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { GlassCard } from '@/components/GlassCard';
+import { OverdueDots } from '@/components/OverdueDots';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { AppText, GhostButton, Notice, PageHeader, Screen } from '@/components/ui';
 import { fetchAppointmentsBetween, fetchSettings } from '@/lib/api';
 import { useSalonLive } from '@/lib/live';
@@ -12,6 +14,7 @@ import {
   formatLongDate,
   formatTimeLabel,
   isBlockingStatus,
+  isOverdueAppointment,
   istTodayIso,
   monthLabel,
   monthBounds,
@@ -142,24 +145,32 @@ export default function ScheduleScreen() {
         <AppText style={styles.quiet}>No visits on this day.</AppText>
       ) : (
         <View style={{ gap: 10, marginBottom: 8 }}>
-          {dayRows.map((item) => (
-            <Pressable
-              key={item.id}
-              onPress={() => router.push({ pathname: '/book', params: { id: item.id } } as unknown as Href)}>
-              <GlassCard>
+          {dayRows.map((item) => {
+            const overdue = isOverdueAppointment(item);
+            return (
+              <GlassCard key={item.id} style={overdue ? styles.overdueCard : undefined}>
                 <View style={styles.visit}>
-                  <View style={{ flex: 1 }}>
+                  <Pressable
+                    onPress={() => router.push({ pathname: '/book', params: { id: item.id } } as unknown as Href)}
+                    style={{ flex: 1 }}>
                     <AppText style={styles.time}>{formatTimeLabel(item.start_time)}</AppText>
                     <AppText style={styles.client}>{clientLabel(item.client)}</AppText>
                     <AppText style={styles.meta}>
                       {item.service_name} · {item.duration_minutes} min · {item.status.replace('_', ' ')}
                     </AppText>
+                    {overdue ? <AppText style={styles.overdueHint}>Running out of time</AppText> : null}
+                  </Pressable>
+                  <View style={styles.visitAside}>
+                    <AppText style={styles.price}>{formatInr(item.price_inr)}</AppText>
+                    <View style={styles.visitActions}>
+                      <WhatsAppButton appointment={item} compact />
+                      {overdue ? <OverdueDots /> : null}
+                    </View>
                   </View>
-                  <AppText style={styles.price}>{formatInr(item.price_inr)}</AppText>
                 </View>
               </GlassCard>
-            </Pressable>
-          ))}
+            );
+          })}
         </View>
       )}
 
@@ -257,6 +268,25 @@ const styles = StyleSheet.create({
   visit: {
     flexDirection: 'row',
     gap: 12,
+  },
+  visitAside: {
+    flexShrink: 0,
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  visitActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  overdueCard: {
+    borderColor: 'rgba(244, 63, 94, 0.45)',
+  },
+  overdueHint: {
+    color: theme.rose,
+    fontFamily: theme.font.medium,
+    fontSize: 12,
+    marginTop: 6,
   },
   time: {
     color: theme.gold,
